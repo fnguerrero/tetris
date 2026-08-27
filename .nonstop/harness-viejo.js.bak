@@ -1,0 +1,136 @@
+const fs = require('fs');
+const html = fs.readFileSync('W:/Working Folder Personal/Tetris/index.html', 'utf8');
+let code = html.split('<script>')[1].split('</script>')[0];
+
+// exponer las internals al final del IIFE para poder testearlas
+code = code.replace(/\n\}\)\(\);\s*$/, `
+window.__api = { get grid(){return grid}, get piece(){return piece}, get state(){return state},
+  get score(){return score}, get lines(){return lines}, get level(){return level},
+  get combo(){return combo}, get backToBack(){return backToBack}, get hold(){return hold},
+  get bag(){return bag}, get best(){return best}, get nextQueue(){return nextQueue},
+  set piece(p){piece=p}, startGame:startGame, hardDrop:hardDrop, rotate:rotate, move:move,
+  softDrop:softDrop, doHold:doHold, finishClear:finishClear, valid:valid, cellsOf:cellsOf,
+  gravityMs:gravityMs, lockPiece:lockPiece, isTSpin:isTSpin, isTSpin:isTSpin, TOTAL_ROWS:TOTAL_ROWS, COLS:COLS, HIDDEN:HIDDEN,
+  SHAPES:SHAPES, resetLockTimer:function(){} };
+})();`);
+
+// DOM minimo
+const ctxStub = new Proxy({}, { get: () => (() => ({ addColorStop(){} })) });
+function el(){
+  return { textContent:'', innerHTML:'', width:0, height:0, style:{},
+    classList:{ add(){}, remove(){}, contains(){return false} },
+    getContext:()=>ctxStub, addEventListener(){}, offsetWidth:1,
+    getAttribute(){return null}, setAttribute(){} };
+}
+const nodes = {};
+global.window = { AudioContext:null, webkitAudioContext:null, addEventListener(){}, };
+global.document = {
+  getElementById(id){ return nodes[id] || (nodes[id] = el()); },
+  addEventListener(){}, hidden:false
+};
+global.requestAnimationFrame = () => 0;
+global.setTimeout = (fn, ms) => 0;
+global.clearTimeout = () => {};
+global.localStorage = undefined;
+
+eval(code);
+const A = window.__api;
+
+let pass = 0, fail = 0;
+function ok(name, cond, extra){
+  if(cond){ pass++; console.log('  OK   ' + name); }
+  else { fail++; console.log('  FAIL ' + name + (extra ? '  ->  ' + extra : '')); }
+}
+function fillRows(n){
+  for(let y = A.TOTAL_ROWS - n; y < A.TOTAL_ROWS; y++)
+    for(let x = 0; x < A.COLS; x++) A.grid[y][x] = (x === 9) ? null : 'O';
+}
+function placeI(){ A.piece = {type:'I', rot:0, x:3, y:0}; A.rotate(1); A.piece.x = 7; }
+function flush(){ if(A.state === 'clearing') A.finishClear(); }
+
+console.log('\n-- Line clears y score --');
+A.startGame();
+fillRows(4); placeI();
+let dropDist = 0; { let y = A.piece.y; while(A.valid(A.piece, A.piece.rot, A.piece.x, y + 1)){ y++; dropDist++; } }
+A.hardDrop();
+ok('entra en estado clearing', A.state === 'clearing', 'state=' + A.state);
+flush();
+ok('tetris borra 4 lineas', A.lines === 4, 'lines=' + A.lines);
+ok('score = 800 (tetris) + 2 por celda de hard drop', A.score === 800 + dropDist * 2, 'score=' + A.score + ' dist=' + dropDist);
+ok('back-to-back armado', A.backToBack === true);
+ok('fila de abajo vacia tras el clear', A.grid[A.TOTAL_ROWS-1].every(c => !c));
+
+let prev = A.score;
+fillRows(4); placeI();
+let d2 = 0; { let y = A.piece.y; while(A.valid(A.piece, A.piece.rot, A.piece.x, y + 1)){ y++; d2++; } }
+A.hardDrop(); flush();
+ok('b2b x1.5 + combo 50', A.score - prev === Math.floor(800*1.5) + 50 + d2 * 2, 'delta=' + (A.score - prev));
+ok('8 lineas, sigue nivel 1', A.level === 1 && A.lines === 8, 'lvl=' + A.level + ' lines=' + A.lines);
+
+fillRows(2); placeI(); A.hardDrop(); flush();
+ok('nivel 2 a las 10 lineas', A.level === 2 && A.lines === 10, 'lvl=' + A.level + ' lines=' + A.lines);
+ok('la gravedad se acelera', A.gravityMs() < 1000, 'g=' + Math.round(A.gravityMs()));
+
+console.log('\n-- Rotacion / SRS --');
+A.startGame();
+A.piece = {type:'I', rot:0, x:-1, y:5}; A.rotate(1);
+ok('wall kick de la I contra la pared izq', A.valid(A.piece, A.piece.rot, A.piece.x, A.piece.y) && A.piece.rot === 1, 'x=' + A.piece.x + ' rot=' + A.piece.rot);
+A.piece = {type:'T', rot:0, x:4, y:5};
+A.rotate(1); A.rotate(1); A.rotate(1); A.rotate(1);
+ok('4 rotaciones vuelven al estado 0', A.piece.rot === 0 && A.piece.x === 4, 'rot=' + A.piece.rot + ' x=' + A.piece.x);
+A.piece = {type:'O', rot:0, x:4, y:5}; A.rotate(1);
+ok('la O no rota', A.piece.rot === 0);
+A.piece = {type:'L', rot:0, x:8, y:5};
+const okRight = A.rotate(1) === undefined && A.cellsOf(A.piece).every(c => c[0] < A.COLS);
+ok('rotacion contra la pared derecha queda dentro', okRight, JSON.stringify(A.cellsOf(A.piece)));
+
+console.log('\n-- Movimiento y limites --');
+A.startGame();
+let guard = 0; while(A.move(-1) && guard++ < 20);
+ok('no se sale por la izquierda', A.cellsOf(A.piece).every(c => c[0] >= 0), JSON.stringify(A.cellsOf(A.piece)));
+guard = 0; while(A.move(1) && guard++ < 20);
+ok('no se sale por la derecha', A.cellsOf(A.piece).every(c => c[0] < A.COLS), JSON.stringify(A.cellsOf(A.piece)));
+guard = 0; while(A.softDrop() && guard++ < 40);
+ok('el soft drop llega al piso', A.cellsOf(A.piece).some(c => c[1] === A.TOTAL_ROWS - 1));
+ok('el soft drop suma puntos', A.score > 0, 'score=' + A.score);
+
+console.log('\n-- Hold --');
+A.startGame();
+const t1 = A.piece.type; A.doHold();
+ok('el hold guarda la pieza', A.hold === t1 && A.piece.type !== t1, 'hold=' + A.hold + ' actual=' + A.piece.type);
+const t2 = A.piece.type; A.doHold();
+ok('no se puede holdear dos veces seguidas', A.piece.type === t2);
+
+console.log('\n-- 7-bag --');
+A.startGame();
+const bolsa1 = [A.piece.type].concat(A.nextQueue.slice(0, 3), A.bag.slice(0, 3));
+const bolsa2 = A.bag.slice(3, 10);
+ok('la 1a bolsa trae las 7 piezas sin repetir', new Set(bolsa1).size === 7, bolsa1.join(''));
+ok('la 2a bolsa trae las 7 piezas sin repetir', new Set(bolsa2).size === 7, bolsa2.join(''));
+ok('la cola de next tiene 3 piezas', A.nextQueue.length === 3, 'len=' + A.nextQueue.length);
+
+console.log('\n-- T-spin --');
+A.startGame();
+A.piece = {type:'T', rot:1, x:4, y:10};
+A.grid[10][4] = 'O'; A.grid[12][4] = 'O'; A.grid[12][6] = 'O';
+A.rotate(1);
+ok('detecta el T-spin (3 esquinas + rotacion)', A.isTSpin() !== null, 'res=' + A.isTSpin());
+A.startGame();
+A.piece = {type:'T', rot:2, x:4, y:10};
+A.grid[10][4] = 'O'; A.grid[12][4] = 'O'; A.grid[12][6] = 'O';
+A.move(1);
+ok('sin rotacion previa no cuenta como T-spin', A.isTSpin() === null);
+A.startGame();
+A.piece = {type:'I', rot:1, x:4, y:10}; A.rotate(1);
+ok('solo la T hace T-spin', A.isTSpin() === null);
+console.log('\n-- Ghost y game over --');
+A.startGame();
+let gy = A.piece.y; while(A.valid(A.piece, A.piece.rot, A.piece.x, gy + 1)) gy++;
+ok('el ghost cae hasta el piso', gy > A.piece.y, 'ghostY=' + gy);
+guard = 0;
+while(A.state === 'playing' && guard++ < 300){ A.piece.x = 4; A.hardDrop(); flush(); }
+ok('game over al apilar hasta arriba', A.state === 'over', 'state=' + A.state + ' piezas=' + guard);
+ok('sin huecos fantasma: la pila queda dentro del tablero', A.grid.length === A.TOTAL_ROWS);
+
+console.log('\n' + pass + ' OK, ' + fail + ' FAIL\n');
+process.exit(fail ? 1 : 0);

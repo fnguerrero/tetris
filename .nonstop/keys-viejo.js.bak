@@ -1,0 +1,72 @@
+const fs = require('fs');
+const html = fs.readFileSync('W:/Working Folder Personal/Tetris/index.html', 'utf8');
+let code = html.split('<script>')[1].split('</script>')[0];
+code = code.replace(/\n\}\)\(\);\s*$/, `
+window.__api = { get piece(){return piece}, get state(){return state}, get score(){return score},
+  get hold(){return hold}, startGame:startGame, valid:valid, cellsOf:cellsOf };
+})();`);
+
+const ctxStub = new Proxy({}, { get: () => (() => ({ addColorStop(){} })) });
+const nodes = {};
+function el(){ return { textContent:'', innerHTML:'', width:0, height:0, style:{},
+  classList:{add(){},remove(){},contains(){return false}}, getContext:()=>ctxStub,
+  addEventListener(){}, offsetWidth:1, getAttribute(){return null} }; }
+const handlers = {};
+global.window = { AudioContext:null, webkitAudioContext:null, addEventListener(){} };
+global.document = {
+  getElementById(id){ return nodes[id] || (nodes[id] = el()); },
+  addEventListener(t, fn){ (handlers[t] = handlers[t] || []).push(fn); },
+  hidden:false
+};
+global.requestAnimationFrame = () => 0;
+global.setTimeout = () => 0;
+global.clearTimeout = () => {};
+eval(code);
+const A = window.__api;
+const press = k => handlers.keydown.forEach(f => f({key:k, preventDefault(){}}));
+const release = k => (handlers.keyup||[]).forEach(f => f({key:k}));
+const tap = k => { press(k); release(k); };
+
+let pass = 0, fail = 0;
+const ok = (n, c, e) => c ? (pass++, console.log('  OK   ' + n))
+                          : (fail++, console.log('  FAIL ' + n + (e ? '  ->  ' + e : '')));
+
+console.log('\n-- Controles --');
+A.startGame();
+const rot0 = A.piece.rot;
+tap(' ');
+ok('Space rota la pieza', A.piece.rot === (rot0 + 1) % 4 || A.piece.type === 'O', 'rot ' + rot0 + ' -> ' + A.piece.rot);
+
+A.startGame();
+const y0 = A.piece.y, sc0 = A.score;
+tap('Enter');
+const apoyada = !A.valid(A.piece, A.piece.rot, A.piece.x, A.piece.y + 1);
+ok('Enter tira la pieza hasta abajo', A.piece.y > y0 && apoyada || A.score > sc0, 'y ' + y0 + ' -> ' + A.piece.y + ' score=' + A.score);
+
+A.startGame();
+const rotA = A.piece.rot; tap('x');
+ok('X sigue rotando', A.piece.rot === (rotA + 1) % 4 || A.piece.type === 'O');
+A.startGame();
+const rotB = A.piece.rot; tap('z');
+ok('Z rota al reves', A.piece.rot === (rotB + 3) % 4 || A.piece.type === 'O');
+A.startGame();
+const rotC = A.piece.rot; tap('ArrowUp');
+ok('Flecha arriba rota', A.piece.rot === (rotC + 1) % 4 || A.piece.type === 'O');
+
+A.startGame();
+const x0 = A.piece.x; tap('ArrowLeft');
+ok('Flecha izquierda mueve', A.piece.x === x0 - 1, 'x ' + x0 + ' -> ' + A.piece.x);
+A.startGame();
+const yd = A.piece.y; tap('ArrowDown');
+ok('Flecha abajo baja una celda', A.piece.y === yd + 1, 'y ' + yd + ' -> ' + A.piece.y);
+A.startGame();
+const t = A.piece.type; tap('c');
+ok('C guarda la pieza', A.hold === t, 'hold=' + A.hold);
+A.startGame();
+tap('p');
+ok('P pausa', A.state === 'paused', 'state=' + A.state);
+tap('p');
+ok('P despausa', A.state === 'playing', 'state=' + A.state);
+
+console.log('\n' + pass + ' OK, ' + fail + ' FAIL\n');
+process.exit(fail ? 1 : 0);

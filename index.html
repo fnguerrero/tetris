@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>TETRIS</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header id="top">
+  <h1>TETRIS</h1>
+  <div id="topBtns">
+    <button class="ibtn" data-go="options" title="Opciones">&#9881;</button>
+    <button class="ibtn" data-go="help" title="Controles">?</button>
+    <button class="ibtn" data-go="fullscreen" title="Pantalla completa">&#9974;</button>
+  </div>
+</header>
+
+<main id="game">
+
+  <aside class="side left">
+    <div class="box">
+      <h2>Hold</h2>
+      <canvas id="hold" width="112" height="72"></canvas>
+    </div>
+    <div class="box"><h2>Score</h2><div class="val" id="score">0</div></div>
+    <div class="box"><h2>Nivel</h2><div class="val" id="level">1</div></div>
+    <div class="box"><h2>Líneas</h2><div class="val" id="lines">0</div></div>
+  </aside>
+
+  <div id="boardWrap">
+    <canvas id="board"></canvas>
+    <div id="msgs"></div>
+
+    <div id="overlay">
+      <!-- menú principal -->
+      <section id="screen-menu" class="screen">
+        <h3 class="stitle">Elegí un modo</h3>
+        <div class="modes">
+          <button class="mode" data-mode="marathon">
+            <b>Marathon</b><small>Sin final: subí de nivel hasta que la pila te gane.</small>
+            <span class="best">Mejor: <i id="best-marathon">—</i></span>
+          </button>
+          <button class="mode" data-mode="sprint">
+            <b>Sprint</b><small>40 líneas lo más rápido posible.</small>
+            <span class="best">Mejor: <i id="best-sprint">—</i></span>
+          </button>
+          <button class="mode" data-mode="ultra">
+            <b>Ultra</b><small>Dos minutos: el score más alto que puedas.</small>
+            <span class="best">Mejor: <i id="best-ultra">—</i></span>
+          </button>
+        </div>
+        <div class="row">
+          <button class="btn ghost hidden" id="btnContinue" data-go="continue">Continuar partida</button>
+          <button class="btn ghost" data-go="stats">Puntajes</button>
+        </div>
+      </section>
+
+      <!-- cuenta regresiva -->
+      <section id="screen-countdown" class="screen hidden transparent">
+        <div id="countdownNum">3</div>
+      </section>
+
+      <!-- pausa -->
+      <section id="screen-pause" class="screen hidden">
+        <h3 class="stitle">Pausa</h3>
+        <div class="big" id="pauseScore">0</div>
+        <div class="row">
+          <button class="btn" data-go="resume">Continuar</button>
+          <button class="btn ghost" data-go="restart">Reiniciar</button>
+        </div>
+        <div class="row">
+          <button class="btn ghost" data-go="options">Opciones</button>
+          <button class="btn ghost" data-go="menu">Salir al menú</button>
+        </div>
+      </section>
+
+      <!-- fin de partida -->
+      <section id="screen-over" class="screen hidden scroll">
+        <h3 class="stitle" id="overTitle">Game over</h3>
+        <div class="big" id="overMain">0</div>
+        <div class="sub" id="overSub"></div>
+        <div class="chips" id="overStats"></div>
+        <div class="record hidden" id="overRecord">¡Nuevo récord!</div>
+        <div class="pstats" id="pieceStats"></div>
+        <div class="row">
+          <button class="btn" data-go="restart">Otra vez</button>
+          <button class="btn ghost" data-go="menu">Menú</button>
+        </div>
+      </section>
+
+      <!-- opciones -->
+      <section id="screen-options" class="screen hidden scroll">
+        <h3 class="stitle">Opciones</h3>
+
+        <div class="opt"><label for="optTheme">Tema</label>
+          <select id="optTheme">
+            <option value="neon">Neón</option>
+            <option value="clasico">Clásico</option>
+            <option value="mono">Monocromo</option>
+            <option value="pastel">Pastel</option>
+          </select></div>
+
+        <div class="opt"><label for="optLevel">Nivel inicial <i id="levelLabel">1</i></label>
+          <input type="range" id="optLevel" min="1" max="15" step="1"></div>
+
+        <div class="opt"><label for="optGhost">Pieza fantasma</label>
+          <input type="checkbox" id="optGhost"></div>
+        <div class="opt"><label for="optGhostOpacity">Opacidad del fantasma <i id="ghostLabel"></i></label>
+          <input type="range" id="optGhostOpacity" min="0.1" max="1" step="0.05"></div>
+        <div class="opt"><label for="optGrid">Grilla</label>
+          <input type="checkbox" id="optGrid"></div>
+        <div class="opt"><label for="optShake">Sacudida de pantalla</label>
+          <input type="checkbox" id="optShake"></div>
+        <div class="opt"><label for="optParticles">Partículas</label>
+          <input type="checkbox" id="optParticles"></div>
+        <div class="opt"><label for="optBackground">Fondo animado</label>
+          <input type="checkbox" id="optBackground"></div>
+
+        <div class="opt"><label for="optSound">Sonido</label>
+          <input type="checkbox" id="optSound"></div>
+        <div class="opt"><label for="optVolume">Volumen <i id="volLabel"></i></label>
+          <input type="range" id="optVolume" min="0" max="1" step="0.05"></div>
+        <div class="opt"><label for="optVibration">Vibración (móvil)</label>
+          <input type="checkbox" id="optVibration"></div>
+
+        <div class="opt"><label for="optDas">DAS <i id="dasLabel"></i></label>
+          <input type="range" id="optDas" min="0" max="300" step="10"></div>
+        <div class="opt"><label for="optArr">ARR <i id="arrLabel"></i></label>
+          <input type="range" id="optArr" min="0" max="120" step="5"></div>
+
+        <h4 class="ssub">Controles</h4>
+        <div id="keyBinder"></div>
+        <div class="row">
+          <button class="btn ghost" id="btnResetKeys">Restaurar teclas</button>
+          <button class="btn ghost" id="btnClearRecords">Borrar récords</button>
+        </div>
+        <div class="row"><button class="btn" data-go="menu">Listo</button></div>
+      </section>
+
+      <!-- ayuda -->
+      <section id="screen-help" class="screen hidden scroll">
+        <h3 class="stitle">Controles</h3>
+        <div id="helpList"></div>
+        <p class="note">En el celular: deslizá para mover, tocá para rotar, deslizá rápido hacia abajo para tirar la pieza y hacia arriba para el hold.</p>
+        <div class="row"><button class="btn" data-go="menu">Volver</button></div>
+      </section>
+
+      <!-- puntajes -->
+      <section id="screen-stats" class="screen hidden scroll">
+        <h3 class="stitle">Puntajes</h3>
+        <div class="tabs">
+          <button class="tab" data-scores="marathon">Marathon</button>
+          <button class="tab" data-scores="sprint">Sprint</button>
+          <button class="tab" data-scores="ultra">Ultra</button>
+        </div>
+        <div id="scoreTable"></div>
+        <div class="row"><button class="btn" data-go="menu">Volver</button></div>
+      </section>
+    </div>
+  </div>
+
+  <aside class="side right">
+    <div class="box">
+      <h2>Next</h2>
+      <canvas id="next" width="112" height="230"></canvas>
+    </div>
+    <div class="box" id="hud">
+      <h2>Tiempo</h2><div class="val" id="time">0:00</div>
+      <div class="mini"><span>Combo</span><b id="combo">—</b></div>
+      <div class="mini"><span>B2B</span><b id="b2b">—</b></div>
+      <div class="mini"><span>PPS</span><b id="pps">0.00</b></div>
+      <div class="mini"><span>LPM</span><b id="lpm">0.0</b></div>
+    </div>
+  </aside>
+
+</main>
+
+<div id="touch">
+  <button data-act="left">&#9664;</button>
+  <button data-act="rotateCCW">&#8630;</button>
+  <button data-act="rotateCW">&#8631;</button>
+  <button data-act="hold">H</button>
+  <button data-act="pause">II</button>
+  <button data-act="softDrop">&#9660;</button>
+  <button data-act="hardDrop">&#8681;</button>
+  <button data-act="right">&#9654;</button>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/render.js"></script>
+<script src="js/input.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

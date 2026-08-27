@@ -1,0 +1,26 @@
+# GitHub Pages sirve este repositorio desde la rama gh-pages.
+# Este workflow la mantiene igual a main en cada push, para no tener que
+# acordarse de pushear a las dos.
+name: Sincronizar gh-pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: true
+
+jobs:
+  sincronizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - run: git push origin HEAD:gh-pages --force
