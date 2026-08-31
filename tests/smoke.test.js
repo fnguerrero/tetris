@@ -22,8 +22,8 @@ module.exports = function run() {
   H.suite('index.html');
   const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   const scripts = (html.match(/<script src="js\/([a-z]+)\.js">/g) || []).map(s => s.match(/js\/([a-z]+)\.js/)[1]);
-  H.eq('carga los 9 módulos en orden', scripts,
-    ['config', 'storage', 'audio', 'engine', 'effects', 'render', 'input', 'ui', 'main']);
+  H.eq('carga los 10 módulos en orden', scripts,
+    ['config', 'storage', 'audio', 'engine', 'persist', 'effects', 'render', 'input', 'ui', 'main']);
   H.ok('no quedaron scripts embebidos', html.indexOf('<script>') === -1);
   H.ok('enlaza la hoja de estilos', html.indexOf('css/style.css') !== -1);
   ['board', 'next', 'hold', 'overlay', 'screen-menu', 'screen-options', 'screen-help', 'screen-stats', 'screen-over', 'screen-pause', 'touch']

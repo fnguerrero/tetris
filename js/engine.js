@@ -479,40 +479,6 @@
     return m > 0 ? this.lines / m : 0;
   };
 
-  /* ---------- serialización ---------- */
-  Engine.prototype.serialize = function () {
-    return {
-      v: 1,
-      mode: this.mode.id, startLevel: this.startLevel,
-      grid: this.grid.map(function (r) { return r.slice(); }),
-      piece: this.piece ? { type: this.piece.type, rot: this.piece.rot, x: this.piece.x, y: this.piece.y } : null,
-      queue: this.queue.slice(), bag: this.bag.slice(),
-      hold: this.hold, holdUsed: this.holdUsed,
-      score: this.score, lines: this.lines, level: this.level,
-      combo: this.combo, backToBack: this.backToBack, b2bCount: this.b2bCount,
-      elapsed: this.elapsed, stats: JSON.parse(JSON.stringify(this.stats)),
-      state: (this.state === 'over') ? 'over' : 'paused'
-    };
-  };
-
-  Engine.prototype.restore = function (d) {
-    if (!d || d.v !== 1) return false;
-    this.reset(d.mode, { startLevel: d.startLevel });
-    this.grid = d.grid.map(function (r) { return r.slice(); });
-    this.piece = d.piece ? { type: d.piece.type, rot: d.piece.rot, x: d.piece.x, y: d.piece.y } : null;
-    this.queue = d.queue.slice();
-    this.bag = d.bag.slice();
-    this.hold = d.hold;
-    this.holdUsed = !!d.holdUsed;
-    this.score = d.score; this.lines = d.lines; this.level = d.level;
-    this.combo = d.combo; this.backToBack = d.backToBack; this.b2bCount = d.b2bCount || 0;
-    this.elapsed = d.elapsed || 0;
-    this.stats = d.stats || this.stats;
-    this.state = 'paused';
-    this.pausedFrom = 'playing';
-    return true;
-  };
-
   T.Engine = Engine;
   T.emptyGrid = emptyGrid;
 

@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "tetris", "runtimeExecutable": "node", "runtimeArgs": [".nonstop/serve.js"], "port": 8123 }
+  ]
+}

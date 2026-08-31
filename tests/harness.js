@@ -64,7 +64,7 @@ function makeStorage() {
 }
 
 /* ---------- carga de módulos ---------- */
-const ORDER = ['config.js', 'storage.js', 'audio.js', 'engine.js', 'effects.js', 'render.js', 'input.js', 'ui.js'];
+const ORDER = ['config.js', 'storage.js', 'audio.js', 'engine.js', 'persist.js', 'effects.js', 'render.js', 'input.js', 'ui.js'];
 
 function load(opts) {
   opts = opts || {};
